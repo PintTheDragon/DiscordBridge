@@ -40,6 +40,7 @@ public class DiscordBridge extends JavaPlugin implements Listener {
         IntegrationHandler.init();
         setupSM();
         Bukkit.getServer().getPluginManager().registerEvents(this, this);
+        if(this.getConfig().getBoolean("enable_admin_channels"))
         c = new ConsoleHandler(this);
         DiscordBridge d = this;
         new BukkitRunnable() {
@@ -96,6 +97,7 @@ public class DiscordBridge extends JavaPlugin implements Listener {
         options.put("guildID", "1234");
         options.put("enable_startup_status", true);
         options.put("enable_shutdown_status", true);
+        options.put("enable_admin_channels", false);
         options.put("startup_status_message", "Server Started");
         options.put("shutdown_status_message", "Server Stopping");
         options.put("reconnectTimeout", 5);
@@ -104,7 +106,7 @@ public class DiscordBridge extends JavaPlugin implements Listener {
         options.put("integration.commands.balance", true);
         options.put("integration.commands.spawn", true);
         options.put("integration.usechatformatting", true);
-        if (!conf.isSet("ip")) {
+        if (!conf.isSet("name")) {
             System.out.print("WARNING: Cofiguration file does not exist! Please configure this so that DiscordBridge may work!");
             //conf.set("ip", "localhost");
             //conf.set("port", "port");
@@ -113,6 +115,7 @@ public class DiscordBridge extends JavaPlugin implements Listener {
             conf.set("guildID", "1234");
             conf.set("enable_startup_status", true);
             conf.set("enable_shutdown_status", true);
+            conf.set("enable_admin_channels", false);
             conf.set("startup_status_message", "Server Started");
             conf.set("shutdown_status_message", "Server Stopping");
             conf.set("reconnectTimeout", 5);
@@ -145,12 +148,13 @@ public class DiscordBridge extends JavaPlugin implements Listener {
         if (!handleConf(conf)) return;
         IntegrationConfig.init(conf);
         setupSM();
+        if(this.getConfig().getBoolean("enable_admin_channels"))
         c = new ConsoleHandler(this);
     }
 
     public void setupSM() {
         FileConfiguration conf = this.getConfig();
-        sm = new SocketManager(this, conf.getString("name"), "34.213.20.39", "8880", conf.getString("auth"), conf.getString("guildID"), conf.getInt("reconnectTimeout"));
+        sm = new SocketManager(this, conf.getString("name"), "wss://api.pint.cloud:443/discordbridge", "443", conf.getString("auth"), conf.getString("guildID"), conf.getInt("reconnectTimeout"));
     }
 
     @Override
@@ -184,6 +188,7 @@ public class DiscordBridge extends JavaPlugin implements Listener {
                 IntegrationHandler.init();
                 setupSM();
                 Bukkit.getServer().getPluginManager().registerEvents(this, this);
+                if(this.getConfig().getBoolean("enable_admin_channels"))
                 c = new ConsoleHandler(this);
                 DiscordBridge d = this;
                 new BukkitRunnable() {
@@ -192,13 +197,14 @@ public class DiscordBridge extends JavaPlugin implements Listener {
                     public void run() {
                         if (sm == null || sm.context == null || sm.context.channel() == null || !sm.context.channel().isActive())
                             setupSM();
-                        if (!ran && getConfig().getBoolean("enable_startup_status")) {
+                        if (!ran && getConfig().getBoolean("enable_startup_status") && sm.context != null) {
                             sm.write("SEND " + getConfig().getString("startup_status_message"));
                             ran = true;
                         }
                     }
 
                 }.runTaskTimerAsynchronously(d, 0l, conf.getInt("reconnectTimeout") * 20);
+            return true;
             }
 
         if (!enabled) return false;

@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const uuidv4 = require('uuid/v4');
-var net = require('net');
+const WebSocket = require('ws');
 var mysql = require('mysql');
 var prefix = "|";
 var loaded = false;
@@ -96,7 +96,9 @@ function addNewGuild(id){
 
 //Create server
 function createServ() {
-    net.createServer(async function (socket) {
+const wss = new WebSocket.Server({ port: 8880 });
+
+    wss.on('connection', function connection(socket) {
         try{
         var login = false;
         var name;
@@ -104,7 +106,7 @@ function createServ() {
 
         var ip = socket.remoteAddress;
 
-        socket.on('data', function (data) {
+        socket.on('message', function incoming(data) {
             data = data.toString();
             if (data.startsWith("LOGIN ")) {
 //LOGIN name auth_str id
@@ -121,7 +123,7 @@ function createServ() {
                     login = true;
                     name = t_name;
                     discServerDelete[discID]["clients"][name] = socket;
-                    socket.write("LCONF");
+                    socket.send("LCONF");
                     //console.log("Server " + name + " logged in!");
                 } else {
                     //console.log("Invalid login from " + ip + ", apparently " + t_name + " (auth token: " + auth + ").");
@@ -177,7 +179,7 @@ function createServ() {
                             if (discServer[discID]["players"][keys[n]] == data.split(" ")[2]) {
                                 delete discServerDelete[discID]["setTokens"][data.split(" ")[1]];
                                 //MeSsaGe Player UUid
-                                socket.write(`MSGPUU ${data.split(" ")[2]} This player already has a discord user associated with it. Use /disbunset to de-link it.`);
+                                socket.send(`MSGPUU ${data.split(" ")[2]} This player already has a discord user associated with it. Use /disbunset to de-link it.`);
                                 return;
                             }
                         }
@@ -185,7 +187,7 @@ function createServ() {
                         saveGuild(discID);
                         client.fetchUser(setTokens[data.split(" ")[1]]).then((user) => {
                                 user.send("Your player has been set!");
-                                socket.write(`MSGPUU ${data.split(" ")[2]} Your player has been set!`);
+                                socket.send(`MSGPUU ${data.split(" ")[2]} Your player has been set!`);
                             });
                         delete discServerDelete[discID]["setTokens"][data.split(" ")[1]];
                         return;
@@ -211,18 +213,18 @@ function createServ() {
             if (login) delete discServerDelete[discID]["clients"][name];
         });
 
-        socket.on('end', function () {
+        socket.on('close', function () {
             if (login) {
                 delete discServerDelete[discID]["clients"][name];
             }
         });
 }
 catch(e){
-    //console.log("t");
+    console.log(e);
 }
-    }).listen(port);
+    });
 
-    //console.log("Started server on " + port);
+    console.log("Started server on " + 8880);
 }
 
 //Server finished
@@ -333,7 +335,7 @@ client.on('message', async msg => {
         if (keys.length != 0) {
             for (var i = 0; i < keys.length; i++) {
                 if (discServer[msg.guild.id]["servers"][keys[i]][2] == String(msg.channel.id)) {
-                    discServerDelete[msg.guild.id]["clients"][keys[i]].write("SPAWN " + discServer[msg.guild.id]["players"][String(msg.author.id)]);
+                    discServerDelete[msg.guild.id]["clients"][keys[i]].send("SPAWN " + discServer[msg.guild.id]["players"][String(msg.author.id)]);
                     return;
                 }
             }
@@ -354,7 +356,7 @@ client.on('message', async msg => {
         if (keys.length != 0) {
             for (var i = 0; i < keys.length; i++) {
                 if (discServer[msg.guild.id]["servers"][keys[i]][2] == String(msg.channel.id)) {
-                    discServerDelete[msg.guild.id]["clients"][keys[i]].write("BAL " + players[String(msg.author.id)]);
+                    discServerDelete[msg.guild.id]["clients"][keys[i]].send("BAL " + players[String(msg.author.id)]);
                     return;
                 }
             }
@@ -403,7 +405,7 @@ client.on('message', async msg => {
         if (keys.length != 0) {
             for (var i = 0; i < keys.length; i++) {
                 if (keys[i] == String(msg.channel.id)) {
-                    discServerDelete[msg.guild.id]["clients"][discServer[msg.guild.id]["adminChannels"][keys[i]]].write("ACMD " + String(msg.channel.id) + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "acmd ")[1]);
+                    discServerDelete[msg.guild.id]["clients"][discServer[msg.guild.id]["adminChannels"][keys[i]]].send("ACMD " + String(msg.channel.id) + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "acmd ")[1]);
                     return;
                 }
             }
@@ -412,7 +414,7 @@ client.on('message', async msg => {
         if (keys.length != 0) {
             for (var i = 0; i < keys.length; i++) {
                 if (discServer[msg.guild.id]["servers"][keys[i]][2] == String(msg.channel.id)) {
-                    discServerDelete[msg.guild.id]["clients"][keys[i]].write("ACMD " + String(msg.channel.id) + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "acmd ")[0]);
+                    discServerDelete[msg.guild.id]["clients"][keys[i]].send("ACMD " + String(msg.channel.id) + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "acmd ")[0]);
                     return;
                 }
             }
@@ -460,7 +462,7 @@ client.on('message', async msg => {
         if (keys.length != 0) {
             for (var i = 0; i < keys.length; i++) {
                 if (keys[i] == String(msg.channel.id)) {
-                    discServerDelete[msg.guild.id]["clients"][discServer[msg.guild.id]["adminChannels"][keys[i]]].write("CCMD " + String(msg.channel.id) + " " + String(msg.author.id) + " " + isAdmin(msg) + " " + uuid + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "cmd ")[1]);
+                    discServerDelete[msg.guild.id]["clients"][discServer[msg.guild.id]["adminChannels"][keys[i]]].send("CCMD " + String(msg.channel.id) + " " + String(msg.author.id) + " " + isAdmin(msg) + " " + uuid + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "cmd ")[1]);
                     return;
                 }
             }
@@ -469,7 +471,7 @@ client.on('message', async msg => {
         if (keys.length != 0) {
             for (var i = 0; i < keys.length; i++) {
                 if (discServer[msg.guild.id]["servers"][keys[i]][2] == String(msg.channel.id)) {
-                    discServerDelete[msg.guild.id]["clients"][keys[i]].write("CCMD " + String(msg.channel.id) + " " + String(msg.author.id) + " " + isAdmin(msg) + " " + uuid + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "cmd ")[1]);
+                    discServerDelete[msg.guild.id]["clients"][keys[i]].send("CCMD " + String(msg.channel.id) + " " + String(msg.author.id) + " " + isAdmin(msg) + " " + uuid + " " + msg.content.split(discServer[msg.guild.id]["prefix"] + "cmd ")[1]);
                     return;
                 }
             }
@@ -481,7 +483,7 @@ client.on('message', async msg => {
     if (keys.length != 0) {
         for (var i = 0; i < keys.length; i++) {
             if (discServer[msg.guild.id]["servers"][keys[i]][2] == String(msg.channel.id)) {
-                discServerDelete[msg.guild.id]["clients"][keys[i]].write("CHAT " + msg.author.username + " " + msg.content);
+                discServerDelete[msg.guild.id]["clients"][keys[i]].send("CHAT " + msg.author.username + " " + msg.content);
                 return;
             }
         }

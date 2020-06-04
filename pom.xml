@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>DiscordBridge</groupId>
   <artifactId>DiscordBridge</artifactId>
-  <version>1.3.0</version>
+  <version>1.3.1</version>
   <name>DiscordBridge</name>
   <description>A Bukkit plugin to bridge together Minecraft and Disord chats</description>
   <build>
